@@ -1,4 +1,4 @@
-import { db, ref, push } from './firebase.js';
+import { db, ref, push } from '/firebase.js';
 
 const questionInput = document.getElementById('question');
 const submitBtn = document.getElementById('submit');
