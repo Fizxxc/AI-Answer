@@ -1,61 +1,54 @@
-import { db, ref, push } from '../../firebase';
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end('Method not allowed');
-
-  const { question } = req.body;
-  if (!question) return res.status(400).json({ error: 'Soal tidak boleh kosong' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Metode tidak diizinkan' });
+  }
 
   try {
-    // Jawaban dari GPT
-    const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+    const { question } = req.body;
+
+    if (!question) {
+      return res.status(400).json({ error: 'Pertanyaan tidak boleh kosong' });
+    }
+
+    // Ganti dengan API key milikmu (gunakan variabel lingkungan jika bisa)
+    const apiKey = process.env.OPENAI_API_KEY || 'proj_qvqUCLgLef4gQQcNpZFT8nW7';
+
+    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-3.5-turbo',
         messages: [
-          { role: 'system', content: 'Kamu adalah AI ahli pelajaran sekolah. Jawab soal ini seakurat mungkin dengan tingkat benar 90%.' },
-          { role: 'user', content: question }
+          {
+            role: 'system',
+            content: 'Kamu adalah asisten AI yang membantu menjawab soal pelajaran tingkat SD hingga SMA dengan akurat.'
+          },
+          {
+            role: 'user',
+            content: question
+          }
         ],
-        temperature: 0.2
+        temperature: 0.3,
+        max_tokens: 800
       })
     });
-    const completionData = await completion.json();
-    const answer = completionData.choices?.[0]?.message?.content || 'Jawaban tidak tersedia';
 
-    // Penilaian jawaban oleh AI
-    const evaluation = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [
-          { role: 'system', content: 'Kamu adalah guru. Nilai jawaban siswa berdasarkan soal dan jawaban yang diberikan AI. Berikan nilai dari 0 sampai 100 dan beri komentar singkat.' },
-          { role: 'user', content: `Soal: ${question}\nJawaban: ${answer}` }
-        ],
-        temperature: 0.4
-      })
-    });
-    const evalData = await evaluation.json();
-    const evaluationText = evalData.choices?.[0]?.message?.content || 'Tidak dapat menilai';
+    const result = await openaiRes.json();
 
-    // Simpan log ke Firebase
-    await push(ref(db, 'logs'), {
-      question,
-      answer,
-      evaluation: evaluationText,
-      timestamp: Date.now()
-    });
+    if (result.error) {
+      console.error('OpenAI Error:', result.error);
+      return res.status(500).json({ error: 'Gagal dari API OpenAI' });
+    }
 
-    res.status(200).json({ answer, evaluation: evaluationText });
+    const answer = result.choices?.[0]?.message?.content?.trim() || 'Tidak ada jawaban yang ditemukan.';
+
+    res.status(200).json({ answer });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Terjadi kesalahan.' });
+    console.error('Server Error:', err);
+    res.status(500).json({ error: 'Terjadi kesalahan server internal' });
   }
 }
