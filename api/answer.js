@@ -6,18 +6,20 @@ export default async function handler(req, res) {
   try {
     const { question } = req.body;
 
-    if (!question) {
-      return res.status(400).json({ error: 'Pertanyaan tidak boleh kosong' });
-    }
+    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_PROJECT_ID) {
+  return res.status(500).json({ error: 'Environment variable tidak ditemukan' });
+}
 
-    // Ganti dengan API key milikmu (gunakan variabel lingkungan jika bisa)
-    const apiKey = process.env.OPENAI_API_KEY || 'proj_qvqUCLgLef4gQQcNpZFT8nW7';
+const apiKey = process.env.OPENAI_API_KEY;
+const projectId = process.env.OPENAI_PROJECT_ID;
+
 
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'OpenAI-Project': projectId // 🔥 tambahkan ini
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
@@ -40,7 +42,7 @@ export default async function handler(req, res) {
 
     if (result.error) {
       console.error('OpenAI Error:', result.error);
-      return res.status(500).json({ error: 'Gagal dari API OpenAI' });
+      return res.status(500).json({ error: result.error.message || 'Gagal dari API OpenAI' });
     }
 
     const answer = result.choices?.[0]?.message?.content?.trim() || 'Tidak ada jawaban yang ditemukan.';
