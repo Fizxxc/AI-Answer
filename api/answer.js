@@ -22,7 +22,7 @@ const projectId = process.env.OPENAI_PROJECT_ID;
         'OpenAI-Project': projectId // 🔥 tambahkan ini
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4.1',
         messages: [
           {
             role: 'system',
